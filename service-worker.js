@@ -1,9 +1,10 @@
-var dataCacheName = 'weatherData-v1';
-var cacheName = 'weatherPWA-step-6-2';
+var dataCacheName = 'punchaWayData-v1';
+var cacheName = 'punchaWayFiles-v1';
 var filesToCache = [
   '/',
   '/index.html',
-  '/scripts/app.js',
+  // '/scripts/app.js',
+  // '/scripts/idb.js',
   '/styles/inline.css',
   '/images/clear.png',
   '/images/cloudy-scattered-showers.png',
