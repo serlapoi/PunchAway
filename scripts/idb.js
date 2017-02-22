@@ -18,8 +18,7 @@ var fdb =
 
   var COMPAT_ENVS = [
     ['Firefox', ">= 16.0"],
-    ['Google Chrome',
-     ">= 24.0 (you may need to get Google Chrome Canary), NO Blob storage support"]
+    ['Google Chrome', ">= 24.0 (you may need to get Google Chrome Canary), NO Blob storage support"]
   ];
   const DB_NAME = 'db-punch-away';
   const DB_VERSION = 4; // Use a long long for this value (don't use a float)
