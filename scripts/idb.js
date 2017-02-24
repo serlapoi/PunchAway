@@ -56,81 +56,91 @@ var fdb =
       // before we can proceed.
       alert("Please close all other tabs with this site open!");
     }
+  }
   /**
    * @param {string} store_name
    * @param {string} mode either "readonly" or "readwrite"
-   */
-    idb.getObjectStore = function (store_name, mode) {
+  */
+  idb.getTransaction = function (store_name, mode) {
+    return new Promise(function(resolve, reject) {
       var tx = idb.db.transaction(store_name, mode);
-      // Do something when all the data is added to the database.
-      tx.oncomplete = function(event) {
-        console.log('onComplete');
-      };
+      tx.oncomplete = resolve(tx.objectStore(store_name));
       tx.onerror = function(event) {
-        console.error('onError', event.errorCode);
-        // Don't forget to handle errors!
-      };
-      return tx.objectStore(store_name);
-    }
-
-    idb.addPunch = function (obj) {
-      console.log('addPublication arguments:');
-      var store = idb.getObjectStore(DB_STORE_NAME, 'readwrite');
-      var req;
-      try {
-        req = store.add(obj);
-        req.onsuccess = function (evt) {
-          console.log("Insertion in DB successful");
-          idb.getObj(obj);
-        };
-        req.onerror = function(evt) {
-          console.error("addPublication error", this.error);
-        };
-      } catch (e) {
-        if (e.name == 'DataCloneError')
-          console.log("This engine doesn't know how to clone a Blob, use Firefox");
-        throw e;
+         reject(Error(`${idb.addObj.name}(${this.errorCode})`))
       }
-    }
-    idb.getObj = function (obj){
-      var store = idb.getObjectStore(DB_STORE_NAME, 'readonly');
-      var index = store.index('userId');
-      var request = index.get([obj.userId, obj.dtPunch]).onsuccess = function(event) {
-        console.log("dtPunch: " + event.target.result.dtPunch);
-        var dtPunch = document.getElementById('dtPunch');
-        dtPunch.textContent = event.target.result.dtPunch;
-      };
-    }
-    idb.updObj = function(obj) {
-      var store = idb.getObjectStore(DB_STORE_NAME, 'readwrite');
-      var index = store.index('userId');
-      var request = index.get([obj.userId, obj.dtPunch]);
-      request.onerror = function(event) {
-        Console.error('Object not Found!');
-        // Handle errors!
-      };
-      request.onsuccess = function(event) {
-        // Get the old value that we want to update
-        if (event.target.result != undefined) {
-          var data = event.target.result;
-          
-          // update the value(s) in the object that you want to change
-          data.dtCreated = obj.dtCreated;
-
-          // Put this updated object back into the database.
-          var requestUpdate = store.put(data);
-          requestUpdate.onerror = function(event) {
-            // Do something with the error
-          };
-          requestUpdate.onsuccess = function(event) {
-            // Success - the data is updated!
-          };
-        }
-      }
-    }
-  idb.updIdxObj = function(obj) {
-      var store = idb.getObjectStore(DB_STORE_NAME, 'readwrite');
+    })
   }
+
+  idb.addObj = function (obj) {
+    return new Promise(function(resolve, reject) {
+      fap.showMsg(`${idb.addObj.name}(obj)`);
+      idb.getTransaction(DB_STORE_NAME, 'readwrite')
+        .then(function(tx) {
+          try {
+            var req = tx.add(obj);
+            req.onsuccess = function (evt) {
+              fap.showMsg('Insertion in DB successful');
+              resolve(idb.getObj(obj));
+            };
+            req.onerror = function(evt) {
+              reject(Error(`${idb.addObj.name}(${this.errorCode})`))
+            }
+          } catch (e) {
+            if (e.name == 'DataCloneError')
+              reject(Error("This engine doesn't know how to clone a Blob, use Firefox"));
+              throw e;
+          }
+        })
+    })
+  }
+
+  idb.getObj = function (obj){
+    idb.getTransaction(DB_STORE_NAME, 'readonly')
+      .then(function(tx) {
+        var index = tx.index('userId');
+        var request = index.get([obj.userId, obj.dtPunch]).onsuccess = function(event) {
+          fap.showMsg(`dtPunch: ${event.target.result.dtPunch}`);
+          var dtPunch = document.getElementById('dtPunch');
+          dtPunch.textContent = event.target.result.dtPunch;
+          return event.target.result;
+        };
+        request.onerror = function(event) {
+          Error('Object not Found!')
+        }
+    })
+  }
+    
+  idb.updObj = function(obj) {
+    return new Promise(function(resolve, reject) {
+      idb.getTransaction(DB_STORE_NAME, 'readwrite')
+        .then(function(tx) {
+          var index = tx.index('userId');
+          var request = index.get([obj.userId, obj.dtPunch]).onsuccess = function(event) {
+            // Get the old value that we want to update
+            if (event.target.result != undefined) {
+              var data = event.target.result;
+              
+              // update the value(s) in the object that you want to change
+              data.dtCreated = obj.dtCreated;
+
+              // Put this updated object back into the database.
+              var requestUpdate = tx.put(data);
+              requestUpdate.onerror = function(event) {
+                reject(Error(`${idb.updObj.name}(${this.errorCode})`))
+              };
+              requestUpdate.onsuccess = function(event) {
+                // Success - the data is updated!
+              }
+            }
+          };
+          request.onerror = function(event) {
+            reject(Error('Object not Found!'))
+          }
+        })
+    })
+  }
+  idb.updIdxObj = function(obj) {
+      var store = idb.getTransaction(DB_STORE_NAME, 'readwrite');
   }
   return idb;
 })();

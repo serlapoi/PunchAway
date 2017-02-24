@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+var fap =
 (function() {
   'use strict';
+
+  const SET_TIMEOUT = 3000;
+  const FUNCTION_URI = 'https://myfirstapifunc.azurewebsites.net/api/';
+  const X_FUNCTIONS_KEY = 'elt3hjw9ijvz67f3updnvgtlyx3e1ykbobs4';
 
   /*****************************************************************************
    *
@@ -34,52 +39,59 @@
 
   app.butAdd.addEventListener('click', function() {
     // Open/show the add new city dialog
-    app.getForecast('2460');
+    app.setPunch('2460');
   });
 
-  app.snackbar = document.getElementById("snackbar");
-  /*****************************************************************************
-   *
-   * Methods for dealing with the model
-   *
-   ****************************************************************************/
-
   /*
-   * Gets a forecast for a specific city and updates the card with the data.
-   * getForecast() first checks if the weather data is in the cache. If so,
-   * then it gets that data and populates the card with the cached data.
-   * Then, getForecast() goes to the network for fresh data. If the network
-   * request goes through, then the card gets updated a second time with the
-   * freshest data.
+   *  setPunch User, dtPunch.
    */
-  app.getForecast = function(userId) {
+  app.setPunch = function (userId){
     var today = new Date();
-    var date = today.toJSON();
-    var obj = { "userId": userId, "dtPunch": date, dtCreated: "", nvComment : navigator.userAgent };
+    var obj = { "userId": userId, "dtPunch": today.toJSON(), dtCreated: "", nvComment : navigator.userAgent };
+    fdb.addObj(obj).then(
+      app.postObj(obj, 'insPunch').then(
+        function(res) {
+          var dtPunch = res.dtPunch;
+          app.showMsg(`dtPunch: ${res.dtPunch}, dtCreated: ${res.dtCreated}`);
+          fdb.updObj(res).then(
+            app.showsnackbar(dtPunch));
+          app.setbutAddContentText()
+        }, app.showErr), 
+      app.showErr)
+  }
 
-    fdb.addPunch(obj);
-    app.setbutAddContentText();
-    var statement = 'select * from weather.forecast where woeid=' + userId;
-    var url = 'https://myfirstapifunc.azurewebsites.net/api/insPunch?code=ut4YEeOr8aWhjVK6e/5nyRV4vngQ2N9UsBCGuanPhBpVPDyE7uKR7g==';
-    // TODO add cache logic here
+  app.showErr = function(errMsg){
+     console.error("ErrMsg: ", errMsg)
+  }
 
-    // Fetch the latest data.
-    var request = new XMLHttpRequest();
-    request.onreadystatechange = function() {
-      if (request.readyState === XMLHttpRequest.DONE) {
-        if (request.status === 200) {
-          var response = JSON.parse(request.response);
-          var dtPunch = response.Punch[0].dtPunch;
-          console.log('dtPunch: {%s}, dtCreated: {%s} ', response.Punch[0].dtPunch, response.Punch[0].dtCreated);
-          fdb.updObj(response.Punch[0]);
-          app.showsnackbar(dtPunch);
+  app.showMsg = function(logMsg){
+     console.log("LogMsg: ", logMsg)
+  }
+
+  app.postObj = function(obj, spName) {
+    return new Promise(function(resolve, reject) {
+      var request = new XMLHttpRequest();
+      request.open('POST', `${FUNCTION_URI}${spName}`);
+      request.setRequestHeader('x-functions-key', X_FUNCTIONS_KEY);
+      request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      request.onreadystatechange = function() {
+        if (request.readyState === XMLHttpRequest.DONE) {
+          if (request.status === 200) {
+            var response = JSON.parse(request.response);
+            resolve(response.Punch[0]);
+          } else {
+            reject(Error(request.statusText));
+          }
         }
-      }
-    }  
-    request.open('POST', url);
-    request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    request.send(JSON.stringify(obj));
+      };
+      // Handle network errors
+      request.onerror = function() {
+        reject(Error('Network Error'));
+      };
+      request.send(JSON.stringify(obj));
+    })
   };
+
   app.showsnackbar = function(dtCreated) {
     // Add the "show" class to DIV
     app.snackbar.className = "show";
@@ -88,30 +100,30 @@
     // After 3 seconds, remove the show class from DIV
     setTimeout(function(){ 
       app.snackbar.className = app.snackbar.className.replace("show", ""); }
-      , 3000);
+      , SET_TIMEOUT);
   };
+
+  app.snackbar = document.getElementById("snackbar");
   app.setbutAddContentText();
 
-// register service worker
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./service-worker.js')
-      .then(function(reg) {
-    
-    if(reg.installing) {
-      console.log('Service worker installing');
-    } else if(reg.waiting) {
-      console.log('Service worker installed');
-    } else if(reg.active) {
-      console.log('Service worker active');
-    }
-    
-  }).catch(function(error) {
-    // registration failed
-    console.log('Registration failed with ' + error);
-  });
-}
-
+  // register service worker
+  if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(function(reg) {
+          if(reg.installing) {
+            console.log('Service worker installing');
+          } else if(reg.waiting) {
+            console.log('Service worker installed');
+          } else if(reg.active) {
+            console.log('Service worker active');
+          }
+        })
+        .catch(function(error) {
+          // registration failed
+            console.log('Registration failed with ' + error);
+        });
+  }
+  return app;
 })();
 document.onreadystatechange = function () {
   if (document.readyState === "complete")
