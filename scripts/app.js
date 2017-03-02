@@ -32,6 +32,7 @@ var fap =
   };
 
   app.butAdd = document.getElementById('butAdd');
+  app.footerMsg = document.getElementsByClassName('footerMsg')[0];
   app.setbutAddContentText = function(){
     app.butAdd.textContent = app.inout ? "Punch Out" : "Punch In";
     app.inout = !app.inout;
@@ -47,16 +48,13 @@ var fap =
    */
   app.setPunch = function (userId){
     var today = new Date();
-    var obj = { "userId": userId, "dtPunch": today.toJSON(), dtCreated: "", nvComment : navigator.userAgent };
-    fdb.addObj(obj).then(
-      app.postObj(obj, 'insPunch').then(
-        function(res) {
-          var dtPunch = res.dtPunch;
-          app.showMsg(`dtPunch: ${res.dtPunch}, dtCreated: ${res.dtCreated}`);
-          fdb.updObj(res).then(
-            app.showsnackbar(dtPunch));
-          app.setbutAddContentText()
-        }, app.showErr), 
+    var obj = { userId: userId, dtPunch: today.toJSON(), dtCreated: "", nvComment : navigator.userAgent };
+    fdb.addObj('Punch9', obj).then(function(obj) {
+      app.showMsg(`dtPunch: ${obj.dtPunch}`);
+      var dtPunch = document.getElementById('dtPunch');
+      dtPunch.textContent = obj.dtPunch;
+      fdb.updCreated('Punch9', '');
+      }, 
       app.showErr)
   }
 
@@ -66,6 +64,7 @@ var fap =
 
   app.showMsg = function(logMsg){
      console.log("LogMsg: ", logMsg)
+     app.footerMsg.textContent = logMsg;
   }
 
   app.postObj = function(obj, spName) {
@@ -103,8 +102,11 @@ var fap =
       , SET_TIMEOUT);
   };
 
-  app.snackbar = document.getElementById("snackbar");
-  app.setbutAddContentText();
+  app.init = function(){
+    app.snackbar = document.getElementById("snackbar");
+    fdb.openIndexedDB();
+    app.setbutAddContentText();
+  }
 
   // register service worker
   if ('serviceWorker' in navigator) {
@@ -127,5 +129,5 @@ var fap =
 })();
 document.onreadystatechange = function () {
   if (document.readyState === "complete")
-      fdb.openIndexedDB();
+      fap.init();
 }

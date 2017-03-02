@@ -2,10 +2,10 @@ var dataCacheName = 'punchaWayData-v1';
 var cacheName = 'punchaWayFiles-v1';
 var filesToCache = [
   '/',
-  '/index.html',
+  //'/index.html',
   // '/scripts/app.js',
   // '/scripts/idb.js',
-  '/styles/inline.css',
+  // '/styles/inline.css',
   '/images/clear.png',
   '/images/cloudy-scattered-showers.png',
   '/images/cloudy.png',
